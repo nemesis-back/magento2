@@ -40,11 +40,17 @@ class Dob extends AbstractWidget
     protected $filterFactory;
 
     /**
+     * @var \Magento\Framework\Locale\ResolverInterface
+     */
+    private $localeResolver;
+
+    /**
      * @param \Magento\Framework\View\Element\Template\Context $context
      * @param \Magento\Customer\Helper\Address $addressHelper
      * @param CustomerMetadataInterface $customerMetadata
      * @param \Magento\Framework\View\Element\Html\Date $dateElement
      * @param \Magento\Framework\Data\Form\FilterFactory $filterFactory
+     * @param \Magento\Framework\Locale\ResolverInterface $localeResolver
      * @param array $data
      */
     public function __construct(
@@ -53,10 +59,12 @@ class Dob extends AbstractWidget
         CustomerMetadataInterface $customerMetadata,
         \Magento\Framework\View\Element\Html\Date $dateElement,
         \Magento\Framework\Data\Form\FilterFactory $filterFactory,
+        \Magento\Framework\Locale\ResolverInterface $localeResolver,
         array $data = []
     ) {
         $this->dateElement = $dateElement;
         $this->filterFactory = $filterFactory;
+        $this->localeResolver = $localeResolver;
         parent::__construct($context, $addressHelper, $customerMetadata, $data);
     }
 
@@ -94,6 +102,11 @@ class Dob extends AbstractWidget
     public function setDate($date)
     {
         $this->setTime($date ? strtotime($date) : false);
+        if (\Zend_Locale_Format::checkDateFormat($date,
+            ['date_format' => $this->getDateFormat(), 'locale' => $this->localeResolver->getLocale()]
+        )) {
+            $date = $this->applyInputFilter($date);
+        }
         $this->setValue($this->applyOutputFilter($date));
         return $this;
     }
@@ -116,6 +129,20 @@ class Dob extends AbstractWidget
             return $filter;
         }
         return false;
+    }
+
+    /**
+     * Apply input filter to value
+     * @param $value
+     * @return string
+     */
+    protected function applyInputFilter($value)
+    {
+        $filter = $this->getFormFilter();
+        if ($filter) {
+            $value = $filter->inputFilter($value);
+        }
+        return $value;
     }
 
     /**

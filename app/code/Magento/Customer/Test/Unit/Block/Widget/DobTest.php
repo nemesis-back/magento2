@@ -122,7 +122,8 @@ class DobTest extends \PHPUnit\Framework\TestCase
             $this->createMock(\Magento\Customer\Helper\Address::class),
             $this->customerMetadata,
             $this->createMock(\Magento\Framework\View\Element\Html\Date::class),
-            $this->filterFactory
+            $this->filterFactory,
+            $localeResolver
         );
     }
 
@@ -236,6 +237,43 @@ class DobTest extends \PHPUnit\Framework\TestCase
             ->willReturn(self::DATE);
 
         $this->filterFactory->expects($this->once())
+            ->method('create')
+            ->with($filterCode, ['format' => self::DATE_FORMAT])
+            ->willReturn($filterMock);
+
+        $this->_block->setDate($date);
+    }
+
+    /**
+     * This test used for scenario when customer tries to register
+     * but get errors after submitting form. Unlike on customer account page,
+     * in this case we should apply both input and output filter to 'dob' attribute
+     */
+    public function testSetDateWithInputFilter()
+    {
+        $date = '01/01/2014';
+        $dateInternalFormat = '2014-01-01';
+        $filterCode = 'date';
+
+        $this->attribute->expects($this->exactly(2))
+            ->method('getInputFilter')
+            ->willReturn($filterCode);
+
+        $filterMock = $this->getMockBuilder(\Magento\Framework\Data\Form\Filter\Date::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $filterMock->expects($this->once())
+            ->method('inputFilter')
+            ->with($date)
+            ->willReturn($dateInternalFormat);
+
+        $filterMock->expects($this->once())
+            ->method('outputFilter')
+            ->with($dateInternalFormat)
+            ->willReturn($date);
+
+        $this->filterFactory->expects($this->exactly(2))
             ->method('create')
             ->with($filterCode, ['format' => self::DATE_FORMAT])
             ->willReturn($filterMock);
